@@ -1,0 +1,46 @@
+server:
+  port: 9900
+spring:
+  task:
+    execution:
+      pool:
+        core-size: 10
+        max-size: 20
+        queue-capacity: 1000
+        keep-alive: 60s
+  scheduler:
+    pool:
+      size: 10
+  datasource:
+    url: jdbc:mysql://shortVideo-mysql:3306/shortVideo?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    username: cannal
+    password: Cjz123456.
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  redis:
+    host: localhost
+    port: 6379
+    password:
+    timeout: 3000
+
+elasticsearch:
+  uris: http://127.0.0.1:9200
+  username: elasticsearch
+  password: elasticsearch
+
+mybatis-plus:
+  global-config:
+    db-config:
+      # 命名策略
+      naming: no_change       # 不进行命名转换
+      column-naming: no_change # 列名也不转换
+  configuration:
+    map-underscore-to-camel-case: true  #驼峰
+    mapper-locations: classpath*:mapper/*.xml
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
