@@ -5,9 +5,7 @@ import com.github.shyiko.mysql.binlog.BinaryLogClient;
 import com.github.shyiko.mysql.binlog.event.*;
 import com.github.shyiko.mysql.binlog.event.deserialization.EventDeserializer;
 import lombok.extern.slf4j.Slf4j;
-import org.example.entity.Label;
-import org.example.entity.ShortVideo;
-import org.example.entity.TableColVo;
+import org.example.entity.*;
 import org.example.mapper.ShortVideoMapper;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,11 +35,20 @@ public class BinlogService implements InitializingBean {
     static {
         classMap.put("t_short_video", ShortVideo.class);
         classMap.put("t_label", Label.class);
+        classMap.put("t_comment", Comment.class);
+        classMap.put("t_comment_reply", CommentReply.class);
+        classMap.put("t_user", User.class);
     }
 
-    private Map<Integer, String>  tableColVos_video_map;
-    private  Map<Integer, String> tableColVos_label_map;
-    private List<String>  syncTables = Arrays.asList("t_short_video","t_label");
+    private Map<Integer, String> tableColVos_video_map;
+    private Map<Integer, String> tableColVos_label_map;
+    private Map<Integer, String> tableColVos_comment_map;
+    private Map<Integer, String> tableColVos_comment_reply_map;
+    private Map<Integer, String> tableColVos_user_map;
+
+    private List<String> syncTables = Arrays.asList(
+            "t_short_video", "t_label", "t_comment", "t_comment_reply", "t_user"
+    );
 
     @Autowired
     private ShortVideoMapper shortVideoMapper;
@@ -171,15 +178,18 @@ public class BinlogService implements InitializingBean {
 
     @Override
     public void afterPropertiesSet() throws Exception {
-        List<TableColVo> tableColVos_video  =   shortVideoMapper.getTableSchemaByName("t_short_video");
-        List<TableColVo> tableColVos_label  =   shortVideoMapper.getTableSchemaByName("t_label");
+        List<TableColVo> tableColVos_video = shortVideoMapper.getTableSchemaByName("t_short_video");
+        List<TableColVo> tableColVos_label = shortVideoMapper.getTableSchemaByName("t_label");
+        List<TableColVo> tableColVos_comment = shortVideoMapper.getTableSchemaByName("t_comment");
+        List<TableColVo> tableColVos_comment_reply = shortVideoMapper.getTableSchemaByName("t_comment_reply");
+        List<TableColVo> tableColVos_user = shortVideoMapper.getTableSchemaByName("t_user");
 
         this.tableColVos_video_map = tableColVos_video.stream()
                 .collect(Collectors.toMap(
                         TableColVo::getOrdinalPosition,       // key: ordinalPosition
                         TableColVo::getColumnName,                               // value: TableColVo 本身
                         (existing, replacement) -> existing   // 如果有重复的 ordinalPosition，保留第一个
-        ));
+                ));
 
         this.tableColVos_label_map = tableColVos_label.stream()
                 .collect(Collectors.toMap(
@@ -188,8 +198,32 @@ public class BinlogService implements InitializingBean {
                         (existing, replacement) -> existing   // 如果有重复的 ordinalPosition，保留第一个
                 ));
 
-        tableNameToColMap.put("t_short_video",tableColVos_video_map);
-        tableNameToColMap.put("t_label",tableColVos_label_map);
+        this.tableColVos_comment_map = tableColVos_comment.stream()
+                .collect(Collectors.toMap(
+                        TableColVo::getOrdinalPosition,
+                        TableColVo::getColumnName,
+                        (existing, replacement) -> existing
+                ));
+
+        this.tableColVos_comment_reply_map = tableColVos_comment_reply.stream()
+                .collect(Collectors.toMap(
+                        TableColVo::getOrdinalPosition,
+                        TableColVo::getColumnName,
+                        (existing, replacement) -> existing
+                ));
+
+        this.tableColVos_user_map = tableColVos_user.stream()
+                .collect(Collectors.toMap(
+                        TableColVo::getOrdinalPosition,
+                        TableColVo::getColumnName,
+                        (existing, replacement) -> existing
+                ));
+
+        tableNameToColMap.put("t_short_video", tableColVos_video_map);
+        tableNameToColMap.put("t_label", tableColVos_label_map);
+        tableNameToColMap.put("t_comment", tableColVos_comment_map);
+        tableNameToColMap.put("t_comment_reply", tableColVos_comment_reply_map);
+        tableNameToColMap.put("t_user", tableColVos_user_map);
 
     }
 }
