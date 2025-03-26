@@ -43,9 +43,7 @@ public class ShortVideoEsRestService {
     public String ShortVideoFullInsert() {
         deleteAll("short_video_index");
         List<ShortVideo> shortVideoList = shortVideoMapper.selectAll();
-        for (ShortVideo shortVideo : shortVideoList) {
-            baseEsCurdService.insert(shortVideo.toEsDocument());
-        }
+        baseEsCurdService.bulkInsert("short_video_index", shortVideoList);
         log.info("全量更新成功 {} 条", shortVideoList.size());
         return "全量更新成功 " + shortVideoList.size() + " 条";
     }
@@ -54,9 +52,7 @@ public class ShortVideoEsRestService {
     public String LabelFullInsert() {
         deleteAll("label_index");
         List<Label> labelList = labelMapper.selectAll();
-        for (Label label : labelList) {
-            baseEsCurdService.insert(label);
-        }
+        baseEsCurdService.bulkInsert("label_index", labelList);
         log.info("全量更新成功 {} 条", labelList.size());
         return "全量更新成功 " + labelList.size() + " 条";
     }
@@ -133,9 +129,7 @@ public class ShortVideoEsRestService {
     public String commentFullInsert() {
         deleteAll("comment_index");
         List<Comment> comments = commentMapper.selectAll();
-        for (Comment Comment : comments) {
-            baseEsCurdService.insert(Comment.toEsDocument());
-        }
+        baseEsCurdService.bulkInsert("comment_index", comments);
         log.info("全量更新成功 {} 条", comments.size());
         return "全量更新成功 " + comments.size() + " 条";
     }
@@ -143,20 +137,16 @@ public class ShortVideoEsRestService {
     public String commentReplyFullInsert() {
         deleteAll("comment_reply_index");
         List<CommentReply> commentReplies = commentReplyMapper.selectAll();
-        for (CommentReply commentReply : commentReplies) {
-            baseEsCurdService.insert(commentReply.toEsDocument());
-        }
+        baseEsCurdService.bulkInsert("comment_reply_index", commentReplies);
         log.info("全量更新成功 {} 条", commentReplies.size());
         return "全量更新成功 " + commentReplies.size() + " 条";
     }
 
     public String userFullInsert() {
+        // 记录总开始时间
         deleteAll("user_index");
-        List<User> users = userMapper.selectList(null);
-        for (User user : users) {
-            baseEsCurdService.insert(user.toEsDocument());
-        }
-        log.info("全量更新成功 {} 条", users.size());
+        List<User> users = userMapper.selectAll();
+        baseEsCurdService.bulkInsert("user_index", users);
         return "全量更新成功 " + users.size() + " 条";
     }
 }
