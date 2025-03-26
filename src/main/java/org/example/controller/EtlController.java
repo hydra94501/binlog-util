@@ -26,20 +26,38 @@ public class EtlController {
     private ShortVideoEsRestService videoEsRestService;
 
     @GetMapping("/full/video")
-    public String video(){
-         return    videoEsRestService.ShortVideoFullInsert();
+    public String video() {
+        return videoEsRestService.ShortVideoFullInsert();
     }
 
     @GetMapping("/full/label")
-    public String label(){
-        return    videoEsRestService.LabelFullInsert();
+    public String label() {
+        return videoEsRestService.LabelFullInsert();
     }
+
+
+    @GetMapping("/full/comment")
+    public String comment() {
+        return videoEsRestService.commentFullInsert();
+    }
+
+    @GetMapping("/full/commentReply")
+    public String commentReply() {
+        return videoEsRestService.commentReplyFullInsert();
+    }
+
+    @GetMapping("/full/user")
+    public String user() {
+        return videoEsRestService.userFullInsert();
+    }
+
 
 
     @Autowired
     ElasticsearchClient client;
+
     @GetMapping("test")
-    public List<Label>  test() throws IOException {
+    public List<Label> test() throws IOException {
         test2("7");
         return null;
         //return list;
@@ -49,7 +67,7 @@ public class EtlController {
     public List<Label> getLabelsByNamePattern(String like) throws IOException {
         SearchResponse<Label> searchResponse = client.search(s -> s
                         .index("label_index")
-                        .query(q -> q.wildcard(t-> t.field("label").wildcard("*"+like+"*"))
+                        .query(q -> q.wildcard(t -> t.field("label").wildcard("*" + like + "*"))
                         ),
                 Label.class
         );
@@ -76,7 +94,7 @@ public class EtlController {
         // 构建查询请求
         SearchRequest.Builder searchRequestBuilder = new SearchRequest.Builder().index("label_index"); // 使用 label_index 索引
 
-        searchRequestBuilder.query(q -> q.wildcard(t-> t.field("label").wildcard("*"+like+"*")));
+        searchRequestBuilder.query(q -> q.wildcard(t -> t.field("label").wildcard("*" + like + "*")));
 
 
         client.search(searchRequestBuilder.build(), Label.class);
