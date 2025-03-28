@@ -2,6 +2,7 @@ package org.example.service;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
+import co.elastic.clients.elasticsearch._types.Refresh;
 import co.elastic.clients.elasticsearch.core.BulkRequest;
 import co.elastic.clients.elasticsearch.core.UpdateResponse;
 import co.elastic.clients.elasticsearch.core.ExistsRequest;
@@ -100,6 +101,7 @@ public class BaseEsCurdService {
             UpdateResponse updateResponse = client.update(g -> g
                     .index(t.index())
                     .doc(t)
+                    .refresh(Refresh.True)
                     .id(t.getId().toString()), t.getClass()
             );
 
