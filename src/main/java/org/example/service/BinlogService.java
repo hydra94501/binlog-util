@@ -20,6 +20,12 @@ import java.util.stream.Collectors;
 @Service
 public class BinlogService implements InitializingBean {
 
+    @Value("${spring.datasource.host}")
+    private String host;
+
+    @Value("${spring.datasource.port}")
+    private Integer port;
+
     @Value("${spring.datasource.username}")
     private String username;
 
@@ -58,19 +64,19 @@ public class BinlogService implements InitializingBean {
 
 
     // 泛型方法，用于将 JSON 字符串转换为指定类型的对象
-    public <T> T convert(Serializable[] rows ,Map<Integer, String> tableColVos_label_map, Class<T> clazz) {
-        Map<String,Object> objectMap = new HashMap<>(rows.length);
+    public <T> T convert(Serializable[] rows, Map<Integer, String> tableColVos_label_map, Class<T> clazz) {
+        Map<String, Object> objectMap = new HashMap<>(rows.length);
         for (int i = 0; i < rows.length; i++) {
-            String colName =  tableColVos_label_map.get(i);
+            String colName = tableColVos_label_map.get(i);
             Serializable colValue = rows[i];
-            if(colValue instanceof Long){
+            if (colValue instanceof Long) {
                 objectMap.put(colName, (Long) colValue);
             }
-            if(colValue instanceof Integer){
+            if (colValue instanceof Integer) {
                 objectMap.put(colName, (Integer) colValue);
             }
-            if(colValue instanceof byte[]){
-                objectMap.put(colName,new String((byte[])colValue));
+            if (colValue instanceof byte[]) {
+                objectMap.put(colName, new String((byte[]) colValue));
             }
         }
         String jsonString = JSON.toJSONString(objectMap);
@@ -78,30 +84,29 @@ public class BinlogService implements InitializingBean {
     }
 
 
-    public <T> List<T> convert(List<Serializable[]> rows ,Map<Integer, String> tableColVos_label_map, Class<T> clazz) {
+    public <T> List<T> convert(List<Serializable[]> rows, Map<Integer, String> tableColVos_label_map, Class<T> clazz) {
         List<T> list = new ArrayList<>();
         for (Serializable[] row : rows) {
-            list.add(convert(row,tableColVos_label_map,clazz));
+            list.add(convert(row, tableColVos_label_map, clazz));
         }
         return list;
     }
 
-    public <T> List<T> convert(List<Serializable[]> rows ,long tableId) {
-        String tableName =  tableIdToNameMap.get(tableId);
+    public <T> List<T> convert(List<Serializable[]> rows, long tableId) {
+        String tableName = tableIdToNameMap.get(tableId);
         Class<T> clazz = classMap.get(tableName);
         Map<Integer, String> tableColVos_label_map = tableNameToColMap.get(tableIdToNameMap.get(tableId));
         List<T> list = new ArrayList<>();
         for (Serializable[] row : rows) {
-            list.add(convert(row,tableColVos_label_map,clazz));
+            list.add(convert(row, tableColVos_label_map, clazz));
         }
         return list;
     }
 
 
-
-    public   void  process() {
+    public void process() {
         // 配置 BinaryLogClient
-        BinaryLogClient client = new BinaryLogClient("shortVideo-mysql", 3306, username, password);
+        BinaryLogClient client = new BinaryLogClient(host, port, username, password);
         client.setServerId(1); // 设置唯一的 serverId
 
         // 配置 EventDeserializer
@@ -119,48 +124,54 @@ public class BinlogService implements InitializingBean {
                 // 处理 TableMapEvent，保存表 ID 到表名的映射
                 TableMapEventData tableMapEventData = (TableMapEventData) data;
                 tableIdToNameMap.put(tableMapEventData.getTableId(), tableMapEventData.getTable());
-                System.out.println("Table map event: " + tableMapEventData.getTable());
+                //System.out.println("Table map event: " + tableMapEventData.getTable());
             } else if (data instanceof WriteRowsEventData) {
                 // 处理 INSERT 事件
                 WriteRowsEventData writeRowsEventData = (WriteRowsEventData) data;
                 String tableName = tableIdToNameMap.get(writeRowsEventData.getTableId());
-                if(!syncTables.contains(tableName) ){
+                if (!syncTables.contains(tableName)) {
                     return;
                 }
 
-                List<Identifiable> rows  =  convert(writeRowsEventData.getRows(),writeRowsEventData.getTableId());
-                for (Identifiable  row : rows) {
-                    log.info("发生了新增{},{}",row.getId(),row.toEsDocument());
+                List<Identifiable> rows = convert(writeRowsEventData.getRows(), writeRowsEventData.getTableId());
+                for (Identifiable row : rows) {
+                    log.info("发生了新增{},{}", row.getId(), row.toEsDocument());
                     esCurdService.insert(row.toEsDocument());
-                    log.info("成功新增{},{}",row.getId(),row.toEsDocument());
+                    log.info("成功新增{},{}", row.getId(), row.toEsDocument());
                 }
 
             } else if (data instanceof UpdateRowsEventData) {
                 UpdateRowsEventData updateRowsEventData = (UpdateRowsEventData) data;
                 String tableName = tableIdToNameMap.get(updateRowsEventData.getTableId());
-                if(!syncTables.contains(tableName) ){
+                if (!syncTables.contains(tableName)) {
                     return;
                 }
 
-                List<Identifiable> rows  =  convert(updateRowsEventData.getRows().stream().map(Map.Entry::getValue).collect(Collectors.toList()), updateRowsEventData.getTableId());
-                for (Identifiable  row : rows) {
-                    log.info("发生了更新{},{}",row.getId(),row.toEsDocument());
-                    esCurdService.update(row.toEsDocument());
-                    log.info("成功更新{},{}",row.getId(),row.toEsDocument());
+                List<Identifiable> rows = convert(updateRowsEventData.getRows().stream().map(Map.Entry::getValue).collect(Collectors.toList()), updateRowsEventData.getTableId());
+                for (Identifiable row : rows) {
+                    if (esCurdService.exists(row.toEsDocument().index(), String.valueOf(row.getId()))) {
+                        log.info("发生了更新{},{}", row.getId(), row.toEsDocument());
+                        esCurdService.update(row.toEsDocument());
+                        log.info("成功更新{},{}", row.getId(), row.toEsDocument());
+                    } else {
+                        log.info("发生了新增{},{}", row.getId(), row.toEsDocument());
+                        esCurdService.insert(row.toEsDocument());
+                        log.info("成功新增{},{}", row.getId(), row.toEsDocument());
+                    }
                 }
 
             } else if (data instanceof DeleteRowsEventData) {
                 DeleteRowsEventData deleteRowsEventData = (DeleteRowsEventData) data;
                 String tableName = tableIdToNameMap.get(deleteRowsEventData.getTableId());
-                if(!syncTables.contains(tableName) ){
+                if (!syncTables.contains(tableName)) {
                     return;
                 }
 
-                List<Identifiable> rows  =  convert(deleteRowsEventData.getRows(),deleteRowsEventData.getTableId());
+                List<Identifiable> rows = convert(deleteRowsEventData.getRows(), deleteRowsEventData.getTableId());
                 for (Identifiable row : rows) {
-                    log.info("发生了删除{} {} ",row.getId(),row.index());
-                    esCurdService.delete(row.getId(),row.index());
-                    log.info("成功删除{},{}",row.getId(),row.index());
+                    log.info("发生了删除{} {} ", row.getId(), row.index());
+                    esCurdService.delete(row.getId(), row.index());
+                    log.info("成功删除{},{}", row.getId(), row.index());
                 }
             }
         });
@@ -170,7 +181,7 @@ public class BinlogService implements InitializingBean {
         try {
             client.connect();
         } catch (Exception e) {
-            log.error("-----------启动binlog 失败-----",e);
+            log.error("-----------启动binlog 失败-----", e);
             e.printStackTrace();
         }
         log.info("-----------启动binlog 成功-----");

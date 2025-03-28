@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.example.mapper.CommentMapper">
+    <resultMap id="BaseResultMap" type="org.example.entity.Comment">
+        <!--@mbg.generated-->
+        <!--@Table t_comment-->
+        <id column="id" jdbcType="BIGINT" property="id"/>
+        <result column="user_id" jdbcType="BIGINT" property="userId"/>
+        <result column="video_id" jdbcType="BIGINT" property="videoId"/>
+        <result column="video_owner_id" jdbcType="BIGINT" property="videoOwnerId"/>
+        <result column="comment_text" jdbcType="LONGVARCHAR" property="commentText"/>
+        <result column="comment_pic" jdbcType="LONGVARCHAR" property="commentPic"/>
+        <result column="love_count" jdbcType="INTEGER" property="loveCount"/>
+        <result column="reply_count" jdbcType="INTEGER" property="replyCount"/>
+        <result column="create_time" jdbcType="TIMESTAMP" property="createTime"/>
+        <result column="is_top" jdbcType="VARCHAR" property="isTop"/>
+        <result column="sortid" jdbcType="INTEGER" property="sortid"/>
+        <result column="spam_key" jdbcType="BIGINT" property="spamKey"/>
+        <result column="tid" jdbcType="BIGINT" property="tid"/>
+        <result column="is_delete" jdbcType="TINYINT" property="isDelete"/>
+        <result column="admin_tid" jdbcType="BIGINT" property="adminTid"/>
+        <result column="admin_uid" jdbcType="BIGINT" property="adminUid"/>
+    </resultMap>
+    <sql id="Base_Column_List">
+        <!--@mbg.generated-->
+        id,
+        user_id,
+        video_id,
+        video_owner_id,
+        comment_text,
+        comment_pic,
+        love_count,
+        reply_count,
+        create_time,
+        is_top,
+        sortid,
+        spam_key,
+        tid,
+        is_delete,
+        admin_tid,
+        admin_uid
+    </sql>
+
+    <select id="selectAll" resultType="org.example.pojo.vo.CommentVideoVo">
+        SELECT t.*,
+               v.title              AS video_title,
+               u2.nickname,
+               u2.head_img_enc_small,
+               u2.mobile,
+               u.nickname           AS video_owner_nickname,
+               u.mobile             AS video_owner_mobile,
+               u.head_img_enc_small AS video_owner_head_pic,
+               u.avatar_url_enc     AS owner_avatar_url_enc,
+               v.video_duration,
+               v.cover_url,
+               v.cover_type,
+               p.platform_name,
+               v.video_from,
+               v.favrit_counts      AS video_favrit_counts,
+               v.feedback_counts    AS video_feedback_counts,
+               v.love_counts        AS video_love_counts,
+               v.labels             AS video_labels,
+               v.summary            AS video_summary,
+               v.create_time        AS video_create_time
+        FROM t_comment t
+                 LEFT JOIN t_short_video v ON t.video_id = v.id
+                 LEFT JOIN t_user u ON u.id = v.owner_id
+                 LEFT JOIN t_user u2 ON u2.id = t.user_id
+                 LEFT JOIN t_platform p ON p.id = t.tid
+    </select>
+</mapper>

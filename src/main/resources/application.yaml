@@ -12,9 +12,12 @@ spring:
     pool:
       size: 10
   datasource:
-    url: jdbc:mysql://shortVideo-mysql:3306/shortVideo?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
-    username: cannal
-    password: Cjz123456.
+    #host: shortVideo-mysql
+    host: 34.150.92.75
+    port: 3306
+    url: jdbc:mysql://${spring.datasource.host}:${spring.datasource.port}/shortVideo?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    username: root
+    password: Xw%N0wd2e@7F.V
     driver-class-name: com.mysql.cj.jdbc.Driver
   redis:
     host: localhost
@@ -23,6 +26,7 @@ spring:
     timeout: 3000
 
 elasticsearch:
+  host: 127.0.0.1
   uris: http://127.0.0.1:9200
   username: elasticsearch
   password: elasticsearch

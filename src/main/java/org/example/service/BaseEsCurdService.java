@@ -1,10 +1,15 @@
 package org.example.service;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import co.elastic.clients.elasticsearch.core.BulkRequest;
 import co.elastic.clients.elasticsearch.core.UpdateResponse;
+import co.elastic.clients.elasticsearch.core.ExistsRequest;
+import co.elastic.clients.elasticsearch.core.GetRequest;
+import co.elastic.clients.elasticsearch.core.GetResponse;
 import co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
 import co.elastic.clients.elasticsearch.core.bulk.IndexOperation;
+import co.elastic.clients.transport.endpoints.BooleanResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -132,4 +137,24 @@ public class BaseEsCurdService {
         return batches;
     }
 
+
+    public boolean exists(String indexName, String id) {
+        try {
+            // 构建Exists请求
+            ExistsRequest existsRequest = ExistsRequest.of(b -> b
+                    .index(indexName)
+                    .id(id)
+            );
+            // 执行请求
+            BooleanResponse response = client.exists(existsRequest);
+            // 返回结果
+            return response.value();
+        } catch (IOException e) {
+            log.error("检查文档是否存在时发生IO异常, index={}, id={}", indexName, id, e);
+            return false;
+        } catch (ElasticsearchException e) {
+            log.error("Elasticsearch检查文档存在时异常, index={}, id={}", indexName, id, e);
+            return false;
+        }
+    }
 }

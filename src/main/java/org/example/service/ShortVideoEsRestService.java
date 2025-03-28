@@ -8,6 +8,7 @@ import co.elastic.clients.elasticsearch.core.UpdateResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.example.entity.*;
 import org.example.mapper.*;
+import org.example.pojo.vo.CommentVideoVo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -20,7 +21,7 @@ public class ShortVideoEsRestService {
 
     private static final String INDEX = "short_video_index";
 
-    private static final String ES_HOST = "http://shortVideo-es:9200";
+    private static final String ES_HOST = "http://127.0.0.1:9200";
 
     @Autowired
     private ShortVideoMapper shortVideoMapper;
@@ -128,7 +129,7 @@ public class ShortVideoEsRestService {
 
     public String commentFullInsert() {
         deleteAll("comment_index");
-        List<Comment> comments = commentMapper.selectAll();
+        List<CommentVideoVo> comments = commentMapper.selectAll();
         baseEsCurdService.bulkInsert("comment_index", comments);
         log.info("全量更新成功 {} 条", comments.size());
         return "全量更新成功 " + comments.size() + " 条";
