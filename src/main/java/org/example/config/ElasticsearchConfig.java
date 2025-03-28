@@ -8,16 +8,21 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import org.apache.http.HttpHost;
 import org.elasticsearch.client.RestClient;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class ElasticsearchConfig {
+
+    @Value("${elasticsearch.host}")
+    private String host;
+
     @Bean
     public RestClient restClient() {
         // 创建 RestClient，连接到 Elasticsearch 服务
         return RestClient.builder(
-                        new HttpHost("shortVideo-es", 9200, "http")
+                        new HttpHost(host, 9200, "http")
                 )
                 .setRequestConfigCallback(requestConfigBuilder ->
                         requestConfigBuilder.setConnectTimeout(5000)
