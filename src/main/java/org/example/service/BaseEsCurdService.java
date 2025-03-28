@@ -2,6 +2,7 @@ package org.example.service;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch.core.BulkRequest;
+import co.elastic.clients.elasticsearch.core.UpdateResponse;
 import co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
 import co.elastic.clients.elasticsearch.core.bulk.IndexOperation;
 import lombok.extern.slf4j.Slf4j;
@@ -91,11 +92,21 @@ public class BaseEsCurdService {
 
     public <T extends Identifiable> void update(T t) {
         try {
-            client.update(g -> g
+            UpdateResponse updateResponse = client.update(g -> g
                     .index(t.index())
                     .doc(t)
                     .id(t.getId().toString()), t.getClass()
             );
+
+            // 获取更新结果
+            String result = updateResponse.result().jsonValue();
+            log.info("ES update result 数据成功，索引: {}, ID: {}", t.index(), result);
+            if ("updated".equals(result)) {
+                log.info("更新ES数据成功，索引: {}, ID: {}", t.index(), t.getId());
+            } else {
+                log.warn("更新ES数据未成功，索引: {}, ID: {}, 结果: {}", t.index(), t.getId(), result);
+            }
+
         } catch (Exception e) {
             log.error("更新ES 数据失败", e);
         }
