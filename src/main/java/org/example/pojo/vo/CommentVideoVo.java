@@ -4,26 +4,26 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.extension.activerecord.Model;
-import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import io.swagger.annotations.ApiModel;
-import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
-import org.example.entity.Comment;
 import org.example.service.Identifiable;
 
 import java.io.Serializable;
 import java.util.Date;
 import java.util.List;
 
+/**
+ * @author Alan_
+ */
 @ApiModel(description = "视频评论")
 @Data
 @Accessors(chain = true)
 @EqualsAndHashCode(callSuper = false)
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class CommentVideoVo extends Model<Comment> implements Identifiable {
+public class CommentVideoVo extends Model<CommentVideoVo> implements Identifiable {
 
     @TableId(value = "id", type = IdType.AUTO)
     private Long id;

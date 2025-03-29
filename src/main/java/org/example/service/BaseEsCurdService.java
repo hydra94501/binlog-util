@@ -70,6 +70,7 @@ public class BaseEsCurdService {
                                     .map(doc -> BulkOperation.of(op -> op
                                             .index(idx -> idx
                                                     .index(indexName)
+                                                    .id(doc.getId().toString())
                                                     .document(doc)
                                             )
                                     ))
