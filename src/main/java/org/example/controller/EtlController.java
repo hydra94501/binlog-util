@@ -37,7 +37,7 @@ public class EtlController {
 
 
     @GetMapping("/full/comment")
-    public String comment() {
+    public String comment() throws IOException {
         return videoEsRestService.commentFullInsert();
     }
 

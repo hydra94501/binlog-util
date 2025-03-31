@@ -4,24 +4,30 @@ import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import co.elastic.clients.elasticsearch._types.Refresh;
 import co.elastic.clients.elasticsearch.core.BulkRequest;
+import co.elastic.clients.elasticsearch.core.BulkResponse;
 import co.elastic.clients.elasticsearch.core.UpdateResponse;
 import co.elastic.clients.elasticsearch.core.ExistsRequest;
-import co.elastic.clients.elasticsearch.core.GetRequest;
-import co.elastic.clients.elasticsearch.core.GetResponse;
 import co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
-import co.elastic.clients.elasticsearch.core.bulk.IndexOperation;
 import co.elastic.clients.transport.endpoints.BooleanResponse;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy;
+import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 
@@ -32,6 +38,16 @@ public class BaseEsCurdService {
 
     @Autowired
     ElasticsearchClient client;
+
+    private final ObjectMapper objectMapper;
+
+    public BaseEsCurdService(ObjectMapper objectMapper) {
+        this.objectMapper = new ObjectMapper()
+                // 支持MyBatis-Plus注解
+                .registerModule(new ParameterNamesModule())
+                // 默认使用下划线命名策略
+                .setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE);
+    }
 
 
     public <T extends Identifiable> void insert(T t) {
@@ -96,10 +112,94 @@ public class BaseEsCurdService {
         }
     }
 
+    public <T extends Identifiable> void bulkInsertWithChineseAnalyzer(
+            String indexName,
+            List<T> documents,
+            Function<T, String> commentTextExtractor) throws IOException {
+
+        // 1. 分批处理（每批3000条）
+        int batchSize = 3000;
+        for (int i = 0; i < documents.size(); i += batchSize) {
+            List<T> batch = documents.subList(i, Math.min(i + batchSize, documents.size()));
+            processBatch(indexName, batch, commentTextExtractor);
+        }
+
+        // 可选：刷新索引使数据立即可查
+        client.indices().refresh(r -> r.index(indexName));
+    }
+
+    private <T extends Identifiable> void processBatch(
+            String indexName,
+            List<T> batch,
+            Function<T, String> commentTextExtractor) throws IOException {
+
+        BulkRequest.Builder bulkBuilder = new BulkRequest.Builder();
+
+        for (T doc : batch) {
+            // 1. 将对象转为Map（自动处理@TableField注解）
+            Map<String, Object> docMap = objectMapper.convertValue(doc, Map.class);
+
+            // 2. 特殊处理comment_text字段（确保分词）
+            docMap.put("comment_text", commentTextExtractor.apply(doc));
+
+            // 3. 添加到批量请求
+            bulkBuilder.operations(op -> op
+                    .index(idx -> idx
+                            .index(indexName)
+                            .id(doc.getId().toString())
+                            .document(docMap)
+                    ));
+        }
+
+        // 4. 执行批量插入
+        BulkResponse response = client.bulk(bulkBuilder.build());
+
+        // 5. 错误处理
+        if (response.errors()) {
+            response.items().forEach(item -> {
+                if (item.error() != null) {
+                    log.error("文档 {} 插入失败: {}", item.id(), item.error().reason());
+                }
+            });
+            throw new IOException("批量插入存在失败文档");
+        }
+
+        log.info("成功插入 {} 条文档到索引 {}", batch.size(), indexName);
+    }
+
+    /**
+     * 创建索引并设置 IK 分词器
+     *
+     * @param indexName
+     * @throws IOException
+     */
+    public void createIndexWithIKAnalyzer(String indexName) throws IOException {
+        client.indices().create(c -> c
+                .index(indexName)
+                .settings(s -> s
+                        .analysis(a -> a
+                                .analyzer("ik_analyzer", an -> an
+                                        .custom(cu -> cu
+                                                .tokenizer("ik_max_word") // 使用 ik_max_word 分词器
+                                        )
+                                )
+                        )
+                )
+                .mappings(m -> m
+                        .properties("comment_text", p -> p
+                                .text(t -> t
+                                        .analyzer("ik_analyzer") // 默认使用 ik_max_word
+                                        .fields("ik_smart", f -> f.text(ft -> ft.analyzer("ik_smart"))) // 添加 ik_smart 子字段
+                                )
+                        )
+                )
+        );
+    }
+
 
     public <T extends Identifiable> void update(T t) {
         try {
-            UpdateResponse updateResponse = client.update(g -> g
+            UpdateResponse<? extends Identifiable> updateResponse = client.update(g -> g
                     .index(t.index())
                     .doc(t)
                     .refresh(Refresh.True)
@@ -158,6 +258,16 @@ public class BaseEsCurdService {
         } catch (ElasticsearchException e) {
             log.error("Elasticsearch检查文档存在时异常, index={}, id={}", indexName, id, e);
             return false;
+        }
+    }
+
+    public void deleteIndex(String commentIndex) {
+        try {
+            // 先尝试删除可能存在的旧索引
+            client.indices().delete(d -> d.index(commentIndex));
+            log.info("已删除旧索引");
+        } catch (Exception e) {
+            log.error("删除索引时发生异常", e);
         }
     }
 }

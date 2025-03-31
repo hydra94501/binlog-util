@@ -12,6 +12,7 @@ import org.example.pojo.vo.CommentVideoVo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.util.List;
 
 @Slf4j
@@ -114,7 +115,8 @@ public class ShortVideoEsRestService {
         try {
             // 使用 _delete_by_query 来删除所有文档
             String url = ES_HOST + "/" + index + "/_delete_by_query";
-            String jsonBody = "{ \"query\": { \"match_all\": {} } }";  // 查询所有文档
+            // 查询所有文档
+            String jsonBody = "{ \"query\": { \"match_all\": {} } }";
 
             String response = HttpRequest.post(url)
                     .body(jsonBody)
@@ -127,10 +129,14 @@ public class ShortVideoEsRestService {
         }
     }
 
-    public String commentFullInsert() {
+    public String commentFullInsert() throws IOException {
         deleteAll("comment_index");
+        baseEsCurdService.deleteIndex("comment_index");
         List<CommentVideoVo> comments = commentMapper.selectAll();
-        baseEsCurdService.bulkInsert("comment_index", comments);
+        baseEsCurdService.createIndexWithIKAnalyzer("comment_index");
+        // 批量插入
+        baseEsCurdService.bulkInsertWithChineseAnalyzer(
+                "comment_index", comments, CommentVideoVo::getCommentText);
         log.info("全量更新成功 {} 条", comments.size());
         return "全量更新成功 " + comments.size() + " 条";
     }
