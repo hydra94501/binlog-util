@@ -5,6 +5,8 @@ import cn.hutool.json.JSONUtil;
 import co.elastic.clients.elasticsearch.core.DeleteResponse;
 import co.elastic.clients.elasticsearch.core.IndexResponse;
 import co.elastic.clients.elasticsearch.core.UpdateResponse;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.extern.slf4j.Slf4j;
 import org.example.entity.*;
 import org.example.mapper.*;
@@ -13,7 +15,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 @Slf4j
 @Service
@@ -129,16 +136,65 @@ public class ShortVideoEsRestService {
         }
     }
 
-    public String commentFullInsert() throws IOException {
+    public String commentFullInsert() throws IOException, InterruptedException {
+        // 1. 清理旧索引
         deleteAll("comment_index");
         baseEsCurdService.deleteIndex("comment_index");
-        List<CommentVideoVo> comments = commentMapper.selectAll();
         baseEsCurdService.createIndexWithIKAnalyzer("comment_index");
-        // 批量插入
-        baseEsCurdService.bulkInsertWithChineseAnalyzer(
-                "comment_index", comments, CommentVideoVo::getCommentText);
-        log.info("全量更新成功 {} 条", comments.size());
-        return "全量更新成功 " + comments.size() + " 条";
+
+        // 2. 初始化分页参数
+        int currentPage = 1;
+        int pageSize = 50000;  // 每页50000条数据
+        long totalSize = 0;
+        long processedCount = 0;
+
+        // 3. 创建线程池
+        int threadCount = Runtime.getRuntime().availableProcessors();
+        ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
+        List<Future<?>> futures = new ArrayList<>();
+
+        // 4. 先查询总数
+        Page<CommentVideoVo> countPage = new Page<>(currentPage, 1);
+        IPage<CommentVideoVo> totalCountPage = commentMapper.selectAll(countPage);
+        totalSize = totalCountPage.getTotal();
+
+        // 5. 分页查询 + 多线程批量插入
+        while (processedCount < totalSize) {
+            Page<CommentVideoVo> dataPage = new Page<>(currentPage, pageSize);
+            IPage<CommentVideoVo> commentPage = commentMapper.selectAll(dataPage);
+            List<CommentVideoVo> batchRecords = commentPage.getRecords();
+            // 提交任务到线程池
+            int finalCurrentPage = currentPage;
+            futures.add(executorService.submit(() -> {
+                try {
+                    baseEsCurdService.bulkInsertWithChineseAnalyzer(
+                            "comment_index", batchRecords, CommentVideoVo::getCommentText);
+                } catch (IOException | InterruptedException e) {
+                    log.error("批量插入失败，当前页: {}", finalCurrentPage, e);
+                }
+            }));
+            processedCount += batchRecords.size();
+            currentPage++;
+            // 每处理10页打印一次进度
+            if (currentPage % 10 == 0) {
+                log.info("处理进度: {}/{} ({}%)",
+                        processedCount, totalSize,
+                        (processedCount * 100 / totalSize));
+            }
+        }
+        // 6. 等待所有线程完成
+        for (Future<?> future : futures) {
+            try {
+                future.get(); // 阻塞直到任务完成
+            } catch (ExecutionException e) {
+                log.error("线程执行异常", e);
+            }
+        }
+        // 7. 关闭线程池
+        executorService.shutdown();
+
+        log.info("全量更新完成，总计 {} 条数据", totalSize);
+        return "全量更新成功，共 " + totalSize + " 条数据";
     }
 
     public String commentReplyFullInsert() {

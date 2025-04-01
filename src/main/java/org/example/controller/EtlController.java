@@ -7,12 +7,12 @@ import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.Hit;
 import co.elastic.clients.elasticsearch.core.search.HitsMetadata;
 import lombok.extern.slf4j.Slf4j;
+import org.example.aop.annotations.PathProcess;
+import org.example.entity.Image;
 import org.example.entity.Label;
 import org.example.service.ShortVideoEsRestService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -24,6 +24,23 @@ import java.util.List;
 public class EtlController {
     @Autowired
     private ShortVideoEsRestService videoEsRestService;
+
+    @GetMapping("/test10")
+    public String test(
+            @PathProcess("https://www.baidu.com") String domain) {
+        log.info("domain: {}", domain);
+        return domain;
+    }
+
+    @PostMapping("/test11")
+    public Image test2(
+            @RequestBody Image domain) {
+        String url = domain.getUrl();
+        log.info("url: {}", url);
+        Image image = new Image();
+        image.setUrl(url);
+        return image;
+    }
 
     @GetMapping("/full/video")
     public String video() {
@@ -37,7 +54,7 @@ public class EtlController {
 
 
     @GetMapping("/full/comment")
-    public String comment() throws IOException {
+    public String comment() throws Exception {
         return videoEsRestService.commentFullInsert();
     }
 
@@ -50,7 +67,6 @@ public class EtlController {
     public String user() {
         return videoEsRestService.userFullInsert();
     }
-
 
 
     @Autowired

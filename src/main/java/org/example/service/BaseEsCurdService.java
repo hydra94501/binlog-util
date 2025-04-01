@@ -23,10 +23,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -41,7 +39,10 @@ public class BaseEsCurdService {
 
     private final ObjectMapper objectMapper;
 
+    private final ExecutorService executor;
+
     public BaseEsCurdService(ObjectMapper objectMapper) {
+        this.executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() * 2);
         this.objectMapper = new ObjectMapper()
                 // 支持MyBatis-Plus注解
                 .registerModule(new ParameterNamesModule())
@@ -115,17 +116,55 @@ public class BaseEsCurdService {
     public <T extends Identifiable> void bulkInsertWithChineseAnalyzer(
             String indexName,
             List<T> documents,
-            Function<T, String> commentTextExtractor) throws IOException {
-
-        // 1. 分批处理（每批3000条）
+            Function<T, String> commentTextExtractor) throws IOException, InterruptedException {
+        // 1. 配置线程池和计数器
         int batchSize = 3000;
-        for (int i = 0; i < documents.size(); i += batchSize) {
-            List<T> batch = documents.subList(i, Math.min(i + batchSize, documents.size()));
-            processBatch(indexName, batch, commentTextExtractor);
+        int totalDocs = documents.size();
+        int totalBatches = (totalDocs + batchSize - 1) / batchSize;
+
+        CountDownLatch latch = new CountDownLatch(totalBatches);
+        AtomicInteger successCount = new AtomicInteger(0);
+        AtomicInteger failureCount = new AtomicInteger(0);
+        BlockingQueue<Exception> exceptionQueue = new LinkedBlockingQueue<>();
+
+        // 2. 分批提交任务
+        for (int i = 0; i < totalDocs; i += batchSize) {
+            List<T> batch = documents.subList(i, Math.min(i + batchSize, totalDocs));
+            executor.submit(() -> {
+                try {
+                    processBatch(indexName, batch, commentTextExtractor);
+                    successCount.addAndGet(batch.size());
+                    log.debug("成功处理批次: {}/{}", successCount.get(), totalDocs);
+                } catch (Exception e) {
+                    failureCount.addAndGet(batch.size());
+                    exceptionQueue.offer(e);
+                    log.error("批次处理失败: {}", e.getMessage());
+                } finally {
+                    latch.countDown();
+                }
+            });
         }
 
-        // 可选：刷新索引使数据立即可查
+        // 3. 等待所有任务完成
+        boolean allFinished = latch.await(10, TimeUnit.MINUTES);
+
+        // 4. 处理结果
+        if (!allFinished) {
+            log.warn("部分批次未在超时时间内完成");
+        }
+
+        if (!exceptionQueue.isEmpty()) {
+            throw new IOException(String.format(
+                    "批量插入完成但有错误: 成功=%d, 失败=%d, 首个错误: %s",
+                    successCount.get(),
+                    failureCount.get(),
+                    exceptionQueue.peek().getMessage()
+            ));
+        }
+        // 5. 刷新索引
         client.indices().refresh(r -> r.index(indexName));
+        log.info("批量插入完成: 总数={}, 成功={}, 失败={}",
+                totalDocs, successCount.get(), failureCount.get());
     }
 
     private <T extends Identifiable> void processBatch(
@@ -134,15 +173,10 @@ public class BaseEsCurdService {
             Function<T, String> commentTextExtractor) throws IOException {
 
         BulkRequest.Builder bulkBuilder = new BulkRequest.Builder();
-
         for (T doc : batch) {
-            // 1. 将对象转为Map（自动处理@TableField注解）
             Map<String, Object> docMap = objectMapper.convertValue(doc, Map.class);
-
-            // 2. 特殊处理comment_text字段（确保分词）
             docMap.put("comment_text", commentTextExtractor.apply(doc));
 
-            // 3. 添加到批量请求
             bulkBuilder.operations(op -> op
                     .index(idx -> idx
                             .index(indexName)
@@ -151,21 +185,21 @@ public class BaseEsCurdService {
                     ));
         }
 
-        // 4. 执行批量插入
         BulkResponse response = client.bulk(bulkBuilder.build());
 
-        // 5. 错误处理
         if (response.errors()) {
-            response.items().forEach(item -> {
-                if (item.error() != null) {
-                    log.error("文档 {} 插入失败: {}", item.id(), item.error().reason());
-                }
-            });
-            throw new IOException("批量插入存在失败文档");
-        }
+            response.items().stream()
+                    .filter(item -> item.error() != null)
+                    .forEach(item -> log.error(
+                            "文档插入失败: ID={}, 原因: {}",
+                            item.id(),
+                            item.error().reason()
+                    ));
+            throw new IOException("批次中存在插入失败的文档");
 
-        log.info("成功插入 {} 条文档到索引 {}", batch.size(), indexName);
+        }
     }
+
 
     /**
      * 创建索引并设置 IK 分词器

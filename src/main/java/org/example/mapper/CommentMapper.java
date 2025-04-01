@@ -1,12 +1,11 @@
 package org.example.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import org.apache.ibatis.annotations.Select;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.example.entity.Comment;
-import org.example.entity.Label;
 import org.example.pojo.vo.CommentVideoVo;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -14,9 +13,7 @@ import java.util.List;
  */
 public interface CommentMapper extends BaseMapper<Comment> {
 
-
-    List<CommentVideoVo> selectAll();
-
+    IPage<CommentVideoVo> selectAll(Page<CommentVideoVo> page);
 
 
 }
