@@ -71,7 +71,6 @@ public interface UserMapper extends BaseMapper<User> {
             "    balance,\n" +
             "    chat_history,\n" +
             "    is_game_author,\n" +
-            "    total_points,\n" +
             "    redeemed_points,\n" +
             "    points,\n" +
             "    total_cash,\n" +

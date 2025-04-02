@@ -354,8 +354,8 @@ public class User extends Model<User> implements Identifiable {
     /**
      * 累计获得积分
      */
-    @TableField(value = "total_points")
-    private BigDecimal totalPoints;
+/*    @TableField(value = "total_points")
+    private BigDecimal totalPoints;*/
 
     /**
      * 已兑换积分
