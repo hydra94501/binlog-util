@@ -25,23 +25,6 @@ public class EtlController {
     @Autowired
     private ShortVideoEsRestService videoEsRestService;
 
-    @GetMapping("/test10")
-    public String test(
-            @PathProcess("https://www.baidu.com") String domain) {
-        log.info("domain: {}", domain);
-        return domain;
-    }
-
-    @PostMapping("/test11")
-    public Image test2(
-            @RequestBody Image domain) {
-        String url = domain.getUrl();
-        log.info("url: {}", url);
-        Image image = new Image();
-        image.setUrl(url);
-        return image;
-    }
-
     @GetMapping("/full/video")
     public String video() {
         return videoEsRestService.ShortVideoFullInsert();
