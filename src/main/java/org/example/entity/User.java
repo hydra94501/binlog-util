@@ -294,8 +294,8 @@ public class User extends Model<User> implements Identifiable {
     /**
      * 头像备份
      */
-    @TableField(value = "head_bak")
-    private String headBak;
+/*    @TableField(value = "head_bak")
+    private String headBak;*/
 
     /**
      * 逻辑删除

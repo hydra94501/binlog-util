@@ -62,7 +62,6 @@ public interface UserMapper extends BaseMapper<User> {
             "    can_bullet,\n" +
             "    register_from_admin_id,\n" +
             "    register_from_admin_name,\n" +
-            "    head_bak,\n" +
             "    deleted,\n" +
             "    is_blue_vip,\n" +
             "    blue_vip_name,\n" +
