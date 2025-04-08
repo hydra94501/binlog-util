@@ -29,7 +29,7 @@ public class ShortVideoEsRestService {
 
     private static final String INDEX = "short_video_index";
 
-    private static final String ES_HOST = "http://127.0.0.1:9200";
+    private static final String ES_HOST = "http://shortVideo-es:9200";
 
     @Autowired
     private ShortVideoMapper shortVideoMapper;
