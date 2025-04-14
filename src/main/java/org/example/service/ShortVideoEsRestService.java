@@ -8,7 +8,10 @@ import co.elastic.clients.elasticsearch.core.UpdateResponse;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.extern.slf4j.Slf4j;
-import org.example.entity.*;
+import org.example.entity.CommentReply;
+import org.example.entity.Label;
+import org.example.entity.ShortVideo;
+import org.example.entity.User;
 import org.example.mapper.*;
 import org.example.pojo.vo.CommentVideoVo;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,7 +32,7 @@ public class ShortVideoEsRestService {
 
     private static final String INDEX = "short_video_index";
 
-    private static final String ES_HOST = "http://shortVideo-es:9200";
+    private static final String ES_HOST = "http://127.0.0.1:9200";
 
     @Autowired
     private ShortVideoMapper shortVideoMapper;

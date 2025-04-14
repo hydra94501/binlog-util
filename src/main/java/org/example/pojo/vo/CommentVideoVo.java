@@ -11,9 +11,7 @@ import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
 import org.example.service.Identifiable;
 
-import java.io.Serializable;
 import java.util.Date;
-import java.util.List;
 
 /**
  * @author Alan_
@@ -36,6 +34,9 @@ public class CommentVideoVo extends Model<CommentVideoVo> implements Identifiabl
 
     @TableField(value = "video_owner_id")
     private Long videoOwnerId;
+
+    @TableField(value = "video_owner_nickname")
+    private String videoOwnerNickname;
 
     /**
      * 评论文本内容
