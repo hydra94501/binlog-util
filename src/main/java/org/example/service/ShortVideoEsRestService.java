@@ -15,6 +15,7 @@ import org.example.entity.User;
 import org.example.mapper.*;
 import org.example.pojo.vo.CommentVideoVo;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -33,6 +34,13 @@ public class ShortVideoEsRestService {
     private static final String INDEX = "short_video_index";
 
     private static final String ES_HOST = "http://127.0.0.1:9200";
+
+    // 从配置文件读取 Elasticsearch 认证信息
+    @Value("${elasticsearch.username}")
+    private String esUsername;
+
+    @Value("${elasticsearch.password}")
+    private String esPassword;
 
     @Autowired
     private ShortVideoMapper shortVideoMapper;
@@ -129,6 +137,7 @@ public class ShortVideoEsRestService {
             String jsonBody = "{ \"query\": { \"match_all\": {} } }";
 
             String response = HttpRequest.post(url)
+                    .basicAuth(esUsername, esPassword) // 添加基本认证
                     .body(jsonBody)
                     .execute()
                     .body();

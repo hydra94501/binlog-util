@@ -1,5 +1,5 @@
 server:
-  port: 9903
+  port: 9900
 spring:
   task:
     execution:
@@ -18,6 +18,8 @@ spring:
     url: jdbc:mysql://${spring.datasource.host}:${spring.datasource.port}/shortVideo?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
     username: 6htvtestcd
     password: hG3DFHGjRn3s$#%.
+#    username: root
+#    password: Xw%N0wd2e@7F.V
     driver-class-name: com.mysql.cj.jdbc.Driver
   redis:
     host: localhost

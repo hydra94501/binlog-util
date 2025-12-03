@@ -7,6 +7,10 @@ import co.elastic.clients.transport.rest_client.RestClientTransport;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import org.apache.http.HttpHost;
+import org.apache.http.auth.AuthScope;
+import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.http.client.CredentialsProvider;
+import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.elasticsearch.client.RestClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -17,22 +21,39 @@ public class ElasticsearchConfig {
 
     @Value("${elasticsearch.host}")
     private String host;
+    @Value("${elasticsearch.username}")
+    private String username;
+    @Value("${elasticsearch.password}")
+    private String password;
+
+
+
 
     @Bean
     public RestClient restClient() {
-        // 创建 RestClient，连接到 Elasticsearch 服务
+        // 创建凭证提供器
+        final CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+        credentialsProvider.setCredentials(AuthScope.ANY,
+                new UsernamePasswordCredentials(username, password));
+
+        // 创建 RestClient，连接到 Elasticsearch 服务并添加认证
         return RestClient.builder(
                         new HttpHost(host, 9200, "http")
+                )
+                .setHttpClientConfigCallback(httpClientBuilder ->
+                        httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider)
+                                .setMaxConnTotal(100)  // 最大连接数
+                                .setMaxConnPerRoute(10)  // 每个路由的最大连接数
                 )
                 .setRequestConfigCallback(requestConfigBuilder ->
                         requestConfigBuilder.setConnectTimeout(5000)
                                 .setSocketTimeout(60000)
                 )
-                .setHttpClientConfigCallback(httpClientBuilder ->
-                        httpClientBuilder.setMaxConnTotal(100)  // 最大连接数
-                                .setMaxConnPerRoute(10)  // 每个路由的最大连接数
-                ).build();
+                .build();
     }
+
+
+
 
     @Bean
     public RestClientTransport transport(RestClient restClient) {
