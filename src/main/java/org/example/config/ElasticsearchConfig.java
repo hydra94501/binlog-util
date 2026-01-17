@@ -35,6 +35,7 @@ public class ElasticsearchConfig {
                 .setHttpClientConfigCallback(httpClientBuilder ->
                         httpClientBuilder.setMaxConnTotal(100)  // 最大连接数
                                 .setMaxConnPerRoute(10)  // 每个路由的最大连接数
+                                .setDefaultCredentialsProvider(credentialsProvider) // 设置认证信息
                 ).build();
     }
 
