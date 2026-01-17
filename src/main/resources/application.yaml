@@ -13,8 +13,8 @@ spring:
       size: 10
   datasource:
     url: jdbc:mysql://shortVideo-mysql:3306/shortVideo?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
-    username: cannal
-    password: Cjz123456.
+    username: root
+    password: ~~1u5f@k2G=`&4=<
     driver-class-name: com.mysql.cj.jdbc.Driver
   redis:
     host: localhost

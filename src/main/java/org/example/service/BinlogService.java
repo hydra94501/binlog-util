@@ -112,7 +112,6 @@ public class BinlogService implements InitializingBean {
                 // 处理 TableMapEvent，保存表 ID 到表名的映射
                 TableMapEventData tableMapEventData = (TableMapEventData) data;
                 tableIdToNameMap.put(tableMapEventData.getTableId(), tableMapEventData.getTable());
-                System.out.println("Table map event: " + tableMapEventData.getTable());
             } else if (data instanceof WriteRowsEventData) {
                 // 处理 INSERT 事件
                 WriteRowsEventData writeRowsEventData = (WriteRowsEventData) data;
